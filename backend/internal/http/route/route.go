@@ -7,9 +7,11 @@ import (
 )
 
 type RouteConfig struct {
-	App            *fiber.App
-	UserController *http.UserController
-	AuthMiddleware fiber.Handler
+	App               *fiber.App
+	UserController    *http.UserController
+	ProjectController *http.ProjectController
+	HealthController  *http.HealthController
+	AuthMiddleware    fiber.Handler
 }
 
 func (c *RouteConfig) Setup() {
@@ -18,6 +20,7 @@ func (c *RouteConfig) Setup() {
 }
 
 func (c *RouteConfig) SetupAuthRoute() {
+
 	group := c.App.Group("/api/v1")
 	group.Use(c.AuthMiddleware)
 
@@ -28,9 +31,13 @@ func (c *RouteConfig) SetupAuthRoute() {
 			"user":   user,
 		})
 	})
+
+	group.Post("projects", c.ProjectController.CreateProject)
 }
 
 func (c *RouteConfig) SetupGuestRoute() {
+	c.App.Get("/health", c.HealthController.HealthCheck)
+
 	c.App.Post("api/v1/login", c.UserController.Login)
 	c.App.Post("api/v1/register", c.UserController.Register)
 	c.App.Get("api/v1/verify-email/:code", c.UserController.Verify)

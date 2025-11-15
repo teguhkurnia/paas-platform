@@ -15,6 +15,9 @@ database:
     max: 100
     lifetime: 300
 
+docker:
+  host: "unix:///var/run/docker.sock"
+
 redis:
   address: "localhost:6379"
   password: ""

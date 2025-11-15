@@ -16,7 +16,7 @@ func NewHealthUseCase(docker *client.Client) *HealthUseCase {
 	}
 }
 
-func (c *HealthUseCase) CheckDockerHealth(context *context.Context) error {
-	_, err := c.Docker.Ping()
+func (c *HealthUseCase) CheckDockerHealth(context context.Context) error {
+	_, err := c.Docker.Ping(context)
 	return err
 }

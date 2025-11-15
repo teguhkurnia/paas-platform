@@ -32,6 +32,7 @@ type BootstrapConfig struct {
 func Bootstrap(config *BootstrapConfig) {
 	// setup repositories
 	userRepo := repository.NewUserRepository(config.Log)
+	projectRepo := repository.NewProjectRepository(config.Log)
 
 	// setup usecases
 	userUseCase := usecase.NewUserUseCase(
@@ -42,6 +43,17 @@ func Bootstrap(config *BootstrapConfig) {
 		userRepo,
 	)
 
+	healthUseCase := usecase.NewHealthUseCase(
+		config.Docker,
+	)
+
+	projectUseCase := usecase.NewProjectUseCase(
+		config.DB,
+		config.Log,
+		config.Validate,
+		projectRepo,
+	)
+
 	// setup controllers
 	userController := http.NewUserController(
 		config.Log,
@@ -49,12 +61,25 @@ func Bootstrap(config *BootstrapConfig) {
 		config.RateLimiterUtil,
 	)
 
+	healthController := http.NewHealthController(
+		config.Log,
+		healthUseCase,
+		config.RateLimiterUtil,
+	)
+
+	projectController := http.NewProjectController(
+		config.Log,
+		projectUseCase,
+	)
+
 	// setup routes
 	authMiddleware := middleware.NewAuthMiddleware(userUseCase)
 	routeConfig := &route.RouteConfig{
-		App:            config.App,
-		UserController: userController,
-		AuthMiddleware: authMiddleware,
+		App:               config.App,
+		UserController:    userController,
+		HealthController:  healthController,
+		ProjectController: projectController,
+		AuthMiddleware:    authMiddleware,
 	}
 
 	routeConfig.Setup()
