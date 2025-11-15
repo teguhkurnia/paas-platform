@@ -1,0 +1,79 @@
+services:
+  # ---
+  # Traefik Reverse Proxy
+  # ---
+  # Traefik handles routing for the backend service
+  # Exposes dashboard on port 8081
+  # Listens on port 80 for incoming requests
+  proxy:
+    image: traefik
+    ports:
+      - "80:80"
+      - "8081:8080" # Dashboard
+    volumes:
+      # docker socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # traefik config
+      - ./infra/traefik/traefik.dev.yaml:/etc/traefik/traefik.yaml:ro
+    networks:
+      - paas-network
+
+  # ---
+  # Backend Service
+  # ---
+  # Go-based backend service
+  # Listens on port 8080 internally
+  # Exposed via Traefik at api.paas.localhost
+  backend:
+    build:
+      context: ./backend
+      dockerfile: dev.Dockerfile
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      # Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Cache Go modules
+      - backend_modules:/go/pkg/mod
+    networks:
+      - paas-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.paas.localhost`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=8080"
+    depends_on:
+      - proxy
+
+  # ---
+  # Frontend Service
+  # ---
+  # NextJS based frontend service
+  # Listens on port 3000 internally
+  # Exposed via Traefik at paas.localhost
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dev.Dockerfile
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      # Cache node modules
+      - frontend-modules:/app/node_modules
+    networks:
+      - paas-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`paas.localhost`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    depends_on:
+      - proxy
+
+volumes:
+  backend_modules:
+  frontend-modules:
+
+networks:
+  paas-network:
+    driver: bridge
