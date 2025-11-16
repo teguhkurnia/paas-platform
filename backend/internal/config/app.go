@@ -26,6 +26,7 @@ type BootstrapConfig struct {
 	Config          *viper.Viper
 	TokenUtil       *util.TokenUtil
 	RateLimiterUtil *util.RateLimiterUtil
+	GitUtil         *util.GitUtil
 	Docker          *docker.Client
 }
 
@@ -33,6 +34,7 @@ func Bootstrap(config *BootstrapConfig) {
 	// setup repositories
 	userRepo := repository.NewUserRepository(config.Log)
 	projectRepo := repository.NewProjectRepository(config.Log)
+	serviceRepo := repository.NewServiceRepository(config.Log)
 
 	// setup usecases
 	userUseCase := usecase.NewUserUseCase(
@@ -54,6 +56,21 @@ func Bootstrap(config *BootstrapConfig) {
 		projectRepo,
 	)
 
+	gitUseCase := usecase.NewGitUseCase(
+		config.Config,
+		config.Log,
+		config.Validate,
+		config.GitUtil,
+	)
+
+	serviceUseCase := usecase.NewServiceUseCase(
+		config.DB,
+		config.Log,
+		serviceRepo,
+		config.Validate,
+		config.Docker,
+	)
+
 	// setup controllers
 	userController := http.NewUserController(
 		config.Log,
@@ -72,6 +89,16 @@ func Bootstrap(config *BootstrapConfig) {
 		projectUseCase,
 	)
 
+	gitController := http.NewGitController(
+		config.Log,
+		gitUseCase,
+	)
+
+	serviceController := http.NewServiceController(
+		config.Log,
+		serviceUseCase,
+	)
+
 	// setup routes
 	authMiddleware := middleware.NewAuthMiddleware(userUseCase)
 	routeConfig := &route.RouteConfig{
@@ -79,6 +106,8 @@ func Bootstrap(config *BootstrapConfig) {
 		UserController:    userController,
 		HealthController:  healthController,
 		ProjectController: projectController,
+		GitController:     gitController,
+		ServiceController: serviceController,
 		AuthMiddleware:    authMiddleware,
 	}
 

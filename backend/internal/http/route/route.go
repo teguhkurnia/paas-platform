@@ -11,6 +11,8 @@ type RouteConfig struct {
 	UserController    *http.UserController
 	ProjectController *http.ProjectController
 	HealthController  *http.HealthController
+	GitController     *http.GitController
+	ServiceController *http.ServiceController
 	AuthMiddleware    fiber.Handler
 }
 
@@ -32,10 +34,20 @@ func (c *RouteConfig) SetupAuthRoute() {
 		})
 	})
 
-	group.Post("projects", c.ProjectController.CreateProject)
+	// group.Post("projects", c.ProjectController.CreateProject)
 }
 
 func (c *RouteConfig) SetupGuestRoute() {
+	// temporary routes
+	c.App.Post("/git/connect/github", c.GitController.ConnectGithub)
+	c.App.Post("/git/clone", c.GitController.GitClone)
+	c.App.Post("/service/build-deploy", c.ServiceController.BuildAndDeployService)
+
+	// Projects
+	c.App.Get("/projects", c.ProjectController.GetAllProjects)
+	c.App.Post("/projects", c.ProjectController.CreateProject)
+	// ---------------------------
+
 	c.App.Get("/health", c.HealthController.HealthCheck)
 
 	c.App.Post("api/v1/login", c.UserController.Login)

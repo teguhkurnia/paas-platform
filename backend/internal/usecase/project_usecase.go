@@ -34,6 +34,39 @@ func NewProjectUseCase(
 	}
 }
 
+func (c *ProjectUseCase) GetAll(
+	ctx context.Context,
+) (*model.PageResponse[model.ProjectResponse], error) {
+	pagination := repository.Pagination[entity.Project]{
+		Limit: 50,
+		Page:  1,
+	}
+
+	projects, err := c.Repository.FindAll(c.DB, pagination)
+
+	c.Log.Debugf("Projects found: %v", projects)
+
+	if err != nil {
+		c.Log.Errorf("Failed to get projects: %v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	responses := make([]model.ProjectResponse, 0)
+	for _, project := range projects.Rows {
+		responses = append(responses, *converter.ProjectToResponse(&project))
+	}
+
+	return &model.PageResponse[model.ProjectResponse]{
+		PageMetaData: model.PageMetaData{
+			Page:       projects.Page,
+			Size:       projects.TotalPages,
+			TotalItems: projects.TotalRows,
+			TotalPages: projects.TotalPages,
+		},
+		Data: responses,
+	}, nil
+}
+
 func (c *ProjectUseCase) Create(
 	ctx context.Context,
 	request *model.CreateProjectRequest,
@@ -50,6 +83,7 @@ func (c *ProjectUseCase) Create(
 	project := &entity.Project{
 		Name:        request.Name,
 		Description: request.Description,
+		Environment: request.Environment,
 	}
 
 	if err := tx.Create(project).Error; err != nil {

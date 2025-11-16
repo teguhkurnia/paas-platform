@@ -2,6 +2,9 @@ FROM golang:alpine3.22
 
 WORKDIR /app
 
+# Install Railpacks untuk build app
+RUN curl -sSL https://railpack.com/install.sh | sh
+
 # Install 'air', alat hot-reload untuk Go
 RUN go install github.com/air-verse/air@latest
 

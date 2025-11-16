@@ -23,6 +23,16 @@ func NewProjectController(
 	}
 }
 
+func (c *ProjectController) GetAllProjects(ctx *fiber.Ctx) error {
+	responses, err := c.UseCase.GetAll(ctx.UserContext())
+	if err != nil {
+		c.Log.Warnf("Failed to get projects: %v", err)
+		return err
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(responses)
+}
+
 func (c *ProjectController) CreateProject(ctx *fiber.Ctx) error {
 	request := new(model.CreateProjectRequest)
 	if err := ctx.BodyParser(request); err != nil {

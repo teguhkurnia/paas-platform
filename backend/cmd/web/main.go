@@ -16,6 +16,7 @@ func main() {
 	redis := config.NewRedis(viperConfig)
 	tokenUtil := util.NewTokenUtil(redis, viperConfig, logger)
 	rateLimiterUtil := util.NewRateLimiterUtil(redis, 5, time.Duration(1*time.Minute))
+	gitUtil := util.NewGitUtil(logger)
 
 	// initialize docker client
 	dockerClient := config.NewDockerClient(viperConfig)
@@ -29,6 +30,7 @@ func main() {
 		Config:          viperConfig,
 		TokenUtil:       tokenUtil,
 		RateLimiterUtil: rateLimiterUtil,
+		GitUtil:         gitUtil,
 		Docker:          dockerClient,
 	})
 

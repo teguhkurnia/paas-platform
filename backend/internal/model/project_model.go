@@ -8,5 +8,6 @@ type ProjectResponse struct {
 
 type CreateProjectRequest struct {
 	Name        string  `json:"name" validate:"required,min=3,max=100"`
-	Description *string `json:"description" validate:"max=500"`
+	Description *string `json:"description"`
+	Environment *string `json:"environment"`
 }
