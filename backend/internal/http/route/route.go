@@ -45,7 +45,11 @@ func (c *RouteConfig) SetupGuestRoute() {
 
 	// Projects
 	c.App.Get("/projects", c.ProjectController.GetAllProjects)
+	c.App.Get("/projects/:id", c.ProjectController.GetProjectByID)
+	c.App.Patch("/projects/:id", c.ProjectController.UpdateProject)
+	c.App.Delete("/projects/:id", c.ProjectController.DeleteProject)
 	c.App.Post("/projects", c.ProjectController.CreateProject)
+
 	// ---------------------------
 
 	c.App.Get("/health", c.HealthController.HealthCheck)

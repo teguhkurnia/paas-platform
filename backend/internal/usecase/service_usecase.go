@@ -1,8 +1,11 @@
 package usecase
 
 import (
+	"context"
 	"fmt"
+	"gofiber-boilerplate/internal/entity"
 	"gofiber-boilerplate/internal/model"
+	"gofiber-boilerplate/internal/model/converter"
 	"gofiber-boilerplate/internal/repository"
 	"os"
 	"os/exec"
@@ -71,4 +74,95 @@ func (u *ServiceUseCase) BuildService(request *model.ServiceBuildRequest) (*stri
 	u.Log.Infof("Service image %s built successfully", imageName)
 
 	return &imageName, nil
+}
+
+func (u *ServiceUseCase) Create(ctx context.Context, request *model.CreateServiceRequest) (*model.ServiceResponse, error) {
+	tx := u.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	err := u.Validate.Struct(request)
+	if err != nil {
+		u.Log.Warnf("Invalid request body: %v", err)
+		return nil, fiber.ErrBadRequest
+	}
+
+	userID := uint64(1) // TODO: get from auth context
+	if request.Environment == nil {
+		// default to project environment
+		// empty string
+		request.Environment = new(string)
+	}
+
+	service := &entity.Service{
+		OwnerID:        userID,
+		ProjectID:      request.ProjectID,
+		Name:           request.Name,
+		Description:    request.Description,
+		Provider:       request.Provider,
+		ProviderInputs: request.ProviderInputs,
+		Environment:    *request.Environment,
+	}
+
+	if err := u.ServiceRepo.Create(tx, service); err != nil {
+		u.Log.Errorf("Failed to create service: %v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		u.Log.Errorf("Failed to commit transaction: %v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	response := converter.ServiceToResponse(service)
+
+	return response, nil
+}
+
+func (u *ServiceUseCase) Update(ctx context.Context, id uint, request *model.UpdateServiceRequest) (*model.ServiceResponse, error) {
+	tx := u.DB.WithContext(ctx).Begin()
+	defer tx.Rollback()
+
+	err := u.Validate.Struct(request)
+	if err != nil {
+		u.Log.Warnf("Invalid request body: %v", err)
+		return nil, fiber.ErrBadRequest
+	}
+
+	service := &entity.Service{}
+	err = u.ServiceRepo.FindByID(tx, service, id)
+	if err != nil {
+		u.Log.Errorf("Failed to get service by ID: %v", err)
+		if err == gorm.ErrRecordNotFound {
+			return nil, fiber.ErrNotFound
+		}
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if request.Name != nil {
+		service.Name = *request.Name
+	}
+	if request.ProviderInputs != nil {
+		service.ProviderInputs = *request.ProviderInputs
+	}
+	service.Description = request.Description
+	service.Environment = func() string {
+		if request.Environment != nil {
+			return *request.Environment
+		}
+		return service.Environment
+	}()
+
+	if err := u.ServiceRepo.Update(tx, service); err != nil {
+		u.Log.Errorf("Failed to update service: %v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		u.Log.Errorf("Failed to commit transaction: %v", err)
+		return nil, fiber.ErrInternalServerError
+	}
+
+	response := converter.ServiceToResponse(service)
+
+	return response, nil
 }
